@@ -1,0 +1,8 @@
+JumpButton < Button
+  width: 64
+
+MainWindow
+  id: question7Window
+  !text: tr('Question 7 Window')
+  size: 400 400
+  @onEscape: toggle()

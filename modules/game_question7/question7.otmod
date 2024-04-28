@@ -1,0 +1,9 @@
+Module
+  name: game_question7
+  description: Module with the UI element for question 7
+  author: Sousa, Alberto
+  website: 
+  sandboxed: true
+  scripts: [ question7 ]
+  @onLoad: init()
+  @onUnload: terminate()
