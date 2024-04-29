@@ -319,6 +319,111 @@ void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPo
         autoWalk(m_autoWalkDestination);
 }
 
+void LocalPlayer::draw(const Point& dest, float scaleFactor, bool animate, LightView* lightView)
+{
+    // First we calculate the base position of the player
+    // we need this as the original draw only adds this offset 
+    // if the player is animating
+    Point basePoint = dest + m_walkOffset * scaleFactor;
+
+    // here we draw a red aura in the same position of the player
+    // only if it is walking
+    if(m_walkAnimationPhase != 0)
+        drawTrail(basePoint, scaleFactor, getDirection(), 1, 0, lightView);
+
+    // as in the video we do not let the player animate
+    Creature::draw(basePoint, scaleFactor, false, lightView);
+
+    // if we are walking, draw 4 more copies of the player behind them
+    if(m_walkAnimationPhase != 0)
+    {
+        const float dist = 15;
+        const int trailCount = 5;
+        for (int i = 1; i < trailCount; i++)
+        {
+            // scale the alpha to let the farthest ones to be less visible
+            const float alpha = 1 - (float)i / trailCount;
+            drawTrail(basePoint, scaleFactor, getDirection(), alpha, i * dist, lightView);
+        }
+    }
+}
+
+void LocalPlayer::drawTrail(const Point& dest, float scaleFactor, Otc::Direction direction, float alpha, int trailDistance, LightView* lightView)
+{
+    // First we set the color with an alpha 
+    Color color = m_outfitColor;
+    color.setAlpha(alpha);
+    g_painter->setColor(color);
+
+    // if we are in the same position of the player, 
+    // try to render the red aura
+    if (trailDistance == 0)
+    {
+        g_painter->setColor(Color::red);
+        scaleFactor *= 1.1f;
+    }
+
+    // xPattern => creature direction, letting the diagonals be horizontals
+    int xPattern;
+    if (direction == Otc::NorthEast || direction == Otc::SouthEast)
+        xPattern = Otc::East;
+    else if (direction == Otc::NorthWest || direction == Otc::SouthWest)
+        xPattern = Otc::West;
+    else
+        xPattern = direction;
+
+    int xOffset = 0;
+    int yOffset = 0;
+
+    // calculte the 2d offset
+    if (xPattern == Otc::East)
+        xOffset = -trailDistance;
+    else if (xPattern == Otc::West)
+        xOffset = trailDistance;
+    else if (xPattern == Otc::North)
+        yOffset = trailDistance;
+    else if (xPattern == Otc::South)
+        yOffset = -trailDistance;
+
+    // calculate the position to draw the trail
+    Point pointPosition = dest + Point(xOffset, yOffset);
+
+    int zPattern = 0;
+    int animationPhase = 0;
+    // yPattern => creature addon
+    for (int yPattern = 0; yPattern < getNumPatternY(); yPattern++) {
+
+        // continue if we dont have this addon
+        if (yPattern > 0 && !(m_outfit.getAddons() & (1 << (yPattern - 1))))
+            continue;
+
+        // draw the base character
+        auto datType = rawGetThingType();
+        datType->draw(pointPosition, scaleFactor, 0, xPattern, yPattern, zPattern, animationPhase, yPattern == 0 ? lightView : nullptr);
+
+        // then paint it
+        if (getLayers() > 1) {
+            Color oldColor = g_painter->getColor();
+            Painter::CompositionMode oldComposition = g_painter->getCompositionMode();
+            g_painter->setCompositionMode(Painter::CompositionMode_Multiply);
+            g_painter->setColor(m_outfit.getHeadColor());
+            datType->draw(pointPosition, scaleFactor, SpriteMaskYellow, xPattern, yPattern, zPattern, animationPhase);
+            g_painter->setColor(m_outfit.getBodyColor());
+            datType->draw(pointPosition, scaleFactor, SpriteMaskRed, xPattern, yPattern, zPattern, animationPhase);
+            g_painter->setColor(m_outfit.getLegsColor());
+            datType->draw(pointPosition, scaleFactor, SpriteMaskGreen, xPattern, yPattern, zPattern, animationPhase);
+            g_painter->setColor(m_outfit.getFeetColor());
+            datType->draw(pointPosition, scaleFactor, SpriteMaskBlue, xPattern, yPattern, zPattern, animationPhase);
+            g_painter->setColor(oldColor);
+            g_painter->setCompositionMode(oldComposition);
+        }
+    }
+
+    // As we set the color from the outfit, before returning
+    // we reset the painters color to avoid messing with other objects
+    g_painter->resetColor();
+}
+
 void LocalPlayer::setStates(int states)
 {
     if(m_states != states) {

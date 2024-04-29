@@ -102,6 +102,10 @@ public:
 
     virtual void onAppear();
     virtual void onPositionChange(const Position& newPos, const Position& oldPos);
+    // In order to draw a trail effect for the player, we will override the draw function
+    virtual void draw(const Point& dest, float scaleFactor, bool animate, LightView* lightView = nullptr) override;
+    // and add a function to actually draw the trail
+    void drawTrail(const Point& dest, float scaleFactor, Otc::Direction direction, float alpha, int trailIndex, LightView* lightView);
 
 protected:
     void walk(const Position& oldPos, const Position& newPos);
